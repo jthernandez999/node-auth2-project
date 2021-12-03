@@ -18,6 +18,8 @@ function find() {
       }
     ]
    */
+  return db('users as u')
+  .join('roles as r', 'u.role_id', '=', 'r.')
 }
 
 function findBy(filter) {
