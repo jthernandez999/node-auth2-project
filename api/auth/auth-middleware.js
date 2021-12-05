@@ -1,4 +1,9 @@
+const { default: jwtDecode } = require("jwt-decode");
+const { rawListeners } = require("superagent");
 const { JWT_SECRET } = require("../secrets"); // use this secret!
+const Users = require('../users/users-model')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
 
 const restricted = (req, res, next) => {
   /*
@@ -16,6 +21,21 @@ const restricted = (req, res, next) => {
 
     Put the decoded token in the req object, to make life easier for middlewares downstream!
   */
+    const token = req.headers.authorization 
+    
+    if(token) {
+      jwt.verify(token, JWT_SECRET, (err, decodeToken) => {
+        if (err) {
+          next({ status: 401, message: 'Token required' })
+        } else {
+          req.decodeToken = decodeToken 
+          console.log('decoded token', req.decodeTokenJwt)
+          next()
+        }
+      })
+    } else {
+      next({ status: 401, message: 'Token invalid' })
+    }
 }
 
 const only = role_name => (req, res, next) => {
@@ -29,10 +49,15 @@ const only = role_name => (req, res, next) => {
 
     Pull the decoded token from the req object, to avoid verifying it again!
   */
+if (req.decodeTokenJwt && req.decodeTokenJwt.role_name === role_name) {
+  next()
+} else { 
+  next({ status: 403, message: 'This is not for you' })
+}
 }
 
 
-const checkUsernameExists = (req, res, next) => {
+const checkUsernameExists = async (req, res, next) => {
   /*
     If the username in req.body does NOT exist in the database
     status 401
@@ -40,8 +65,20 @@ const checkUsernameExists = (req, res, next) => {
       "message": "Invalid credentials"
     }
   */
+try{
+  const { username } = req.body
+  const users = await Users.findBy({ username })
+  if (users.length) {
+    req.user = users[0]
+    next()
+  } else{
+    next({ status: 401, message: 'Invalid credentials'})
+  }
+} catch(err){
+  next(err)
 }
-
+    
+  }
 
 const validateRoleName = (req, res, next) => {
   /*
@@ -62,7 +99,23 @@ const validateRoleName = (req, res, next) => {
       "message": "Role name can not be longer than 32 chars"
     }
   */
+
+// let{ user } = req.body 
+
+    if(!req.body.role_name || req.body.role_name.trim() === '') {
+      req.body.role_name == 'student'
+      next()
+    }  else if (req.body.role_name === 'admin') {
+      res.status(422).json({ message: 'Role_role_name can not be admin'})
+    } else if(req.body.role_name) {
+      role_name = req.body.role_name.trim() 
+      next()
+    } else if(req.body.role_name.trim() > 32) {
+      res.status(422).json({ message: 'Role name can not be longer than 32 chars'})
+    }
+console.log('testing validateRoleName')
 }
+
 
 module.exports = {
   restricted,
