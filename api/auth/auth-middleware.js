@@ -26,7 +26,7 @@ const restricted = (req, res, next) => {
     if(token) {
       jwt.verify(token, JWT_SECRET, (err, decodeToken) => {
         if (err) {
-          next({ status: 401, message: 'Token required' })
+          next({ status: 401, message: 'Token invalid' })
         } else {
           req.decodeToken = decodeToken 
           console.log('decoded token', req.decodeTokenJwt)
@@ -34,7 +34,7 @@ const restricted = (req, res, next) => {
         }
       })
     } else {
-      next({ status: 401, message: 'Token invalid' })
+      next({ status: 401, message: 'Token required' })
     }
 }
 
@@ -54,10 +54,11 @@ if (req.decodeTokenJwt && req.decodeTokenJwt.role_name === role_name) {
 } else { 
   next({ status: 403, message: 'This is not for you' })
 }
+next()
 }
 
 
-const checkUsernameExists = async (req, res, next) => {
+const checkUsernameExists = async(req, res, next) => {
   /*
     If the username in req.body does NOT exist in the database
     status 401
@@ -77,10 +78,11 @@ try{
 } catch(err){
   next(err)
 }
-    
+
   }
 
 const validateRoleName = (req, res, next) => {
+
   /*
     If the role_name in the body is valid, set req.role_name to be the trimmed string and proceed.
 
@@ -100,20 +102,17 @@ const validateRoleName = (req, res, next) => {
     }
   */
 
-// let{ user } = req.body 
-
-    if(!req.body.role_name || req.body.role_name.trim() === '') {
-      req.body.role_name == 'student'
+    if (!req.body.role_name || !req.body.role_name.trim()){
+      req.role_name = 'student'
       next()
-    }  else if (req.body.role_name === 'admin') {
-      res.status(422).json({ message: 'Role_role_name can not be admin'})
-    } else if(req.body.role_name) {
-      role_name = req.body.role_name.trim() 
+    } else if (req.body.role_name.trim() === 'admin'){
+      next({ status: 422, message: 'Role name can not be admin' })
+    } else if (req.body.role_name.trim().length > 32) {
+      next({ status: 422, message: 'Role name can not be longer than 32 chars'})
+    } else {
+      req.role_name = req.body.role_name.trim()
       next()
-    } else if(req.body.role_name.trim() > 32) {
-      res.status(422).json({ message: 'Role name can not be longer than 32 chars'})
     }
-console.log('testing validateRoleName')
 }
 
 
